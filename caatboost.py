@@ -66,47 +66,34 @@ def load_model():
                 feature_names = ['30kg ABW', 'Litter size', 'Season', 'Birth weight', 'Parity', 'Sex']
                 
             return model, "CatBoost native", feature_names
-            
         except Exception as e2:
-            st.error(f"❌ 模型加载失败:")
-            st.error(f"Joblib错误: {e1}")
-            st.error(f"CatBoost错误: {e2}")
+            st.error(f"❌ 模型加载失败: {e1}, {e2}")
             return None, None, None
 
-# 侧边栏 - 模型加载
-with st.sidebar:
-    st.header("Model Configuration")
-    
-    if st.button("Load Model", type="primary"):
-        with st.spinner('Loading model...'):
-            model, load_method, feature_names = load_model()
-            if model is not None:
-                st.session_state.model = model
-                st.session_state.model_loaded = True
-                st.session_state.model_feature_names = feature_names
-                
-                # 显示模型特征顺序（用于调试）
-                st.info(f"模型特征顺序: {feature_names}")
-                
-                # 初始化SHAP解释器
-                try:
-                    # 临时重定向stdout避免SHAP冗长输出
-                    old_stdout = sys.stdout
-                    sys.stdout = open(os.devnull, 'w')
-                    
-                    st.session_state.explainer = shap.TreeExplainer(model)
-                    sys.stdout = old_stdout
-                    st.success(f"✅ 模型加载成功 ({load_method}格式)")
-                    st.success("✅ SHAP解释器初始化成功")
-                except Exception as e:
-                    sys.stdout = old_stdout
-                    st.warning(f"模型加载成功，但SHAP解释器初始化失败: {e}")
-            else:
-                st.error("❌ 模型加载失败")
+# 直接加载模型
+with st.spinner('Loading model...'):
+    model, load_method, feature_names = load_model()
+    if model is not None:
+        st.session_state.model = model
+        st.session_state.model_loaded = True
+        st.session_state.model_feature_names = feature_names
+        
+        # 显示模型特征顺序（用于调试）
+        st.info(f"模型特征顺序: {feature_names}")
+        
+        # 初始化SHAP解释器
+        try:
+            st.session_state.explainer = shap.TreeExplainer(model)
+            st.success(f"✅ 模型加载成功 ({load_method}格式)")
+            st.success("✅ SHAP解释器初始化成功")
+        except Exception as e:
+            st.warning(f"模型加载成功，但SHAP解释器初始化失败: {e}")
+    else:
+        st.error("❌ 模型加载失败")
 
 # 如果模型未加载，显示提示
 if not st.session_state.model_loaded:
-    st.info("👈 请在侧边栏点击'Load Model'按钮来初始化应用")
+    st.info("👈 请确保模型已成功加载")
     st.stop()
 
 # 特征范围和描述 - 注意：这里使用模型的特征名称顺序
@@ -138,73 +125,38 @@ feature_ranges = {
 # 按照模型的特征顺序重新排列特征
 ordered_feature_names = st.session_state.model_feature_names
 
-# 输入特征值 - 按照模型的特征顺序
+# 输入特征值 - 每行一个输入框
 st.header("Enter the following feature values:")
 feature_values_dict = {}
 
-col1, col2 = st.columns(2)
-
-# 第一列特征
-with col1:
-    for i, feature in enumerate(ordered_feature_names[:3]):
-        properties = feature_ranges[feature]
-        if properties["type"] == "numerical":
-            value = st.number_input(
-                label=f"{feature} ({properties['min']} - {properties['max']})",
-                min_value=float(properties["min"]),
-                max_value=float(properties["max"]),
-                value=float(properties["default"]),
+for feature in ordered_feature_names:
+    properties = feature_ranges[feature]
+    if properties["type"] == "numerical":
+        value = st.number_input(
+            label=f"{feature} ({properties['min']} - {properties['max']})",
+            min_value=float(properties["min"]),
+            max_value=float(properties["max"]),
+            value=float(properties["default"]),
+            key=feature
+        )
+    elif properties["type"] == "categorical":
+        if isinstance(properties["options"], dict):
+            display_options = list(properties["options"].keys())
+            selected_label = st.selectbox(
+                label=f"{feature}",
+                options=display_options,
+                index=display_options.index(properties["default"]),
                 key=feature
             )
-        elif properties["type"] == "categorical":
-            if isinstance(properties["options"], dict):
-                display_options = list(properties["options"].keys())
-                selected_label = st.selectbox(
-                    label=f"{feature}",
-                    options=display_options,
-                    index=display_options.index(properties["default"]),
-                    key=feature
-                )
-                value = properties["options"][selected_label]
-            else:
-                value = st.selectbox(
-                    label=f"{feature}",
-                    options=properties["options"],
-                    index=properties["options"].index(properties["default"]),
-                    key=feature
-                )
-        feature_values_dict[feature] = value
-
-# 第二列特征
-with col2:
-    for i, feature in enumerate(ordered_feature_names[3:], 3):
-        properties = feature_ranges[feature]
-        if properties["type"] == "numerical":
-            value = st.number_input(
-                label=f"{feature} ({properties['min']} - {properties['max']})",
-                min_value=float(properties["min"]),
-                max_value=float(properties["max"]),
-                value=float(properties["default"]),
+            value = properties["options"][selected_label]
+        else:
+            value = st.selectbox(
+                label=f"{feature}",
+                options=properties["options"],
+                index=properties["options"].index(properties["default"]),
                 key=feature
             )
-        elif properties["type"] == "categorical":
-            if isinstance(properties["options"], dict):
-                display_options = list(properties["options"].keys())
-                selected_label = st.selectbox(
-                    label=f"{feature}",
-                    options=display_options,
-                    index=display_options.index(properties["default"]),
-                    key=feature
-                )
-                value = properties["options"][selected_label]
-            else:
-                value = st.selectbox(
-                    label=f"{feature}",
-                    options=properties["options"],
-                    index=properties["options"].index(properties["default"]),
-                    key=feature
-                )
-        feature_values_dict[feature] = value
+    feature_values_dict[feature] = value
 
 # 创建特征DataFrame - 按照模型的特征顺序
 feature_values_ordered = [feature_values_dict[name] for name in ordered_feature_names]
@@ -221,13 +173,7 @@ if st.button("Predict ADG (g/d)", type="primary"):
             
             # 计算SHAP值
             if st.session_state.explainer is not None:
-                # 临时重定向stdout
-                old_stdout = sys.stdout
-                sys.stdout = open(os.devnull, 'w')
-                
                 shap_values = st.session_state.explainer.shap_values(features_df)
-                sys.stdout = old_stdout
-                
                 st.session_state.shap_values = shap_values
                 st.session_state.base_value = st.session_state.explainer.expected_value
             
@@ -284,47 +230,6 @@ if st.session_state.predicted_value is not None and st.session_state.shap_values
     except Exception as e:
         st.error(f"SHAP waterfall plot failed: {e}")
         st.info("尝试替代的SHAP可视化...")
-        
-        # 尝试使用条形图作为替代
-        try:
-            st.subheader("SHAP Feature Importance (Bar Plot)")
-            fig2, ax2 = plt.subplots(figsize=(10, 6))
-            
-            # 创建SHAP条形图
-            shap.summary_plot(
-                st.session_state.shap_values, 
-                features_df, 
-                feature_names=ordered_feature_names,
-                plot_type="bar",
-                show=False
-            )
-            
-            plt.tight_layout()
-            st.pyplot(fig2)
-            plt.close(fig2)
-            
-        except Exception as e2:
-            st.error(f"Alternative SHAP visualization also failed: {e2}")
-    
-    # 特征贡献表格
-    st.subheader("Feature Contributions")
-    try:
-        contribution_data = []
-        for i, feature in enumerate(ordered_feature_names):
-            shap_value = st.session_state.shap_values[0][i]
-            contribution_data.append({
-                "Feature": feature,
-                "Value": features_df.iloc[0][feature],
-                "SHAP Value": f"{shap_value:.4f}",
-                "Impact": "Increases prediction" if shap_value > 0 else "Decreases prediction",
-                "Impact Strength": "Strong" if abs(shap_value) > 0.1 else "Moderate" if abs(shap_value) > 0.01 else "Weak"
-            })
-        
-        contribution_df = pd.DataFrame(contribution_data)
-        st.dataframe(contribution_df, use_container_width=True)
-        
-    except Exception as e:
-        st.error(f"Feature contribution table failed: {e}")
 
 # 下载预测结果
 st.header("Download Prediction Results")
@@ -350,24 +255,3 @@ if st.session_state.predicted_value is not None:
     )
 else:
     st.info("Please click 'Predict ADG (g/d)' button first to get predictions, then you can download the results.")
-
-# 侧边栏信息
-st.sidebar.header("About this Model")
-st.sidebar.info("""
-This is a CatBoost regression model for predicting Average Daily Gain (ADG) based on various pig features.
-
-**Features:**
-- 30kg ABW: Body weight at 30kg
-- Litter size: Number of piglets in the litter  
-- Season: Birth season
-- Birth weight: Individual weight at birth (kg)
-- Parity: Which litter (1 for first, 2 for second, etc.)
-- Sex: Gender of the pig
-""")
-
-st.sidebar.header("Model Information")
-if st.session_state.model_loaded:
-    st.sidebar.write(f"**Model Type:** CatBoost Regressor")
-    st.sidebar.write(f"**Features:** {len(ordered_feature_names)}")
-    st.sidebar.write(f"**Feature Order:** {ordered_feature_names}")
-    st.sidebar.write(f"**SHAP Ready:** {'Yes' if st.session_state.explainer is not None else 'No'}")
