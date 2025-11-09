@@ -59,6 +59,12 @@ st.markdown("""
         font-size: 24px;
         font-weight: bold;
     }
+
+    /* 使输入框整体大小变大 */
+    .stNumberInput input, .stTextInput input, .stSelectbox select {
+        font-size: 20px;
+        padding: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
