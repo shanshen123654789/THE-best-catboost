@@ -111,7 +111,7 @@ feature_ranges = {
         "default": "Spring"
     },
     "Birth weight": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},
-    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 2},
+    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 4},
     "Sex": {
         "type": "categorical",
         "options": {
@@ -125,38 +125,74 @@ feature_ranges = {
 # 按照模型的特征顺序重新排列特征
 ordered_feature_names = st.session_state.model_feature_names
 
-# 输入特征值 - 每行一个输入框
+# 输入特征值 - 每行一个输入框，使用两列的布局，使其更加紧凑
 st.header("Enter the following feature values:")
 feature_values_dict = {}
 
-for feature in ordered_feature_names:
-    properties = feature_ranges[feature]
-    if properties["type"] == "numerical":
-        value = st.number_input(
-            label=f"{feature} ({properties['min']} - {properties['max']})",
-            min_value=float(properties["min"]),
-            max_value=float(properties["max"]),
-            value=float(properties["default"]),
-            key=feature
-        )
-    elif properties["type"] == "categorical":
-        if isinstance(properties["options"], dict):
-            display_options = list(properties["options"].keys())
-            selected_label = st.selectbox(
-                label=f"{feature}",
-                options=display_options,
-                index=display_options.index(properties["default"]),
+# 使用两列布局来展示输入框
+col1, col2 = st.columns([1, 1])  # 等宽布局，列宽比例为 1:1
+
+# 第一列特征
+with col1:
+    for i, feature in enumerate(ordered_feature_names[:3]):
+        properties = feature_ranges[feature]
+        if properties["type"] == "numerical":
+            value = st.number_input(
+                label=f"{feature} ({properties['min']} - {properties['max']})",
+                min_value=float(properties["min"]),
+                max_value=float(properties["max"]),
+                value=float(properties["default"]),
                 key=feature
             )
-            value = properties["options"][selected_label]
-        else:
-            value = st.selectbox(
-                label=f"{feature}",
-                options=properties["options"],
-                index=properties["options"].index(properties["default"]),
+        elif properties["type"] == "categorical":
+            if isinstance(properties["options"], dict):
+                display_options = list(properties["options"].keys())
+                selected_label = st.selectbox(
+                    label=f"{feature}",
+                    options=display_options,
+                    index=display_options.index(properties["default"]),
+                    key=feature
+                )
+                value = properties["options"][selected_label]
+            else:
+                value = st.selectbox(
+                    label=f"{feature}",
+                    options=properties["options"],
+                    index=properties["options"].index(properties["default"]),
+                    key=feature
+                )
+        feature_values_dict[feature] = value
+
+# 第二列特征
+with col2:
+    for i, feature in enumerate(ordered_feature_names[3:], 3):
+        properties = feature_ranges[feature]
+        if properties["type"] == "numerical":
+            value = st.number_input(
+                label=f"{feature} ({properties['min']} - {properties['max']})",
+                min_value=float(properties["min"]),
+                max_value=float(properties["max"]),
+                value=float(properties["default"]),
                 key=feature
             )
-    feature_values_dict[feature] = value
+        elif properties["type"] == "categorical":
+            if isinstance(properties["options"], dict):
+                display_options = list(properties["options"].keys())
+                selected_label = st.selectbox(
+                    label=f"{feature}",
+                    options=display_options,
+                    index=display_options.index(properties["default"]),
+                    key=feature
+                )
+                value = properties["options"][selected_label]
+            else:
+                value = st.selectbox(
+                    label=f"{feature}",
+                    options=properties["options"],
+                    index=properties["options"].index(properties["default"]),
+                    key=feature
+                )
+        feature_values_dict[feature] = value
 
 # 创建特征DataFrame - 按照模型的特征顺序
 feature_values_ordered = [feature_values_dict[name] for name in ordered_feature_names]
