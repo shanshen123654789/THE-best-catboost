@@ -47,6 +47,18 @@ st.markdown("""
         font-family: 'Times New Roman', serif;
         font-size: 16px;
     }
+
+    /* 增大标签字体大小 */
+    .stNumberInput label, .stSelectbox label, .stTextInput label, .stRadio label {
+        font-size: 20px;
+        font-family: 'Times New Roman', serif;
+    }
+    
+    /* 增大特定输入框标签的字体 */
+    .stNumberInput label[for='30kg ABW'], .stNumberInput label[for='Birth weight'], .stSelectbox label[for='Season'] {
+        font-size: 24px;
+        font-weight: bold;
+    }
     </style>
 """, unsafe_allow_html=True)
 
