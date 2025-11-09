@@ -124,7 +124,7 @@ feature_ranges = {
         "default": "Spring"
     },
     "Birth weight": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},
-    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 4},
+    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 2},
     "Sex": {
         "type": "categorical",
         "options": {
