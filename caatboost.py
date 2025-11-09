@@ -50,7 +50,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load model automatically (removed manual load button)
+# Load model automatically
 @st.cache_resource
 def load_model():
     """
@@ -168,31 +168,30 @@ st.header("🎯 Prediction")
 if st.button("🚀 Predict Growth Rate", type="primary", use_container_width=True):
     if not st.session_state.model_loaded:
         st.error("Please load the model first!")
-        return
-    
-    with st.spinner('Calculating prediction...'):
-        try:
-            # Make prediction
-            predicted_value = st.session_state.model.predict(st.session_state.features_df)[0]
-            st.session_state.predicted_value = predicted_value
-            
-            # Display results
-            st.success(f"**Predicted Growth Rate: `{predicted_value:.4f}`**")
-            
-            # Calculate SHAP values for explanation
+    else:
+        with st.spinner('Calculating prediction...'):
             try:
-                if st.session_state.explainer is None:
-                    st.session_state.explainer = shap.TreeExplainer(st.session_state.model)
+                # Make prediction
+                predicted_value = st.session_state.model.predict(st.session_state.features_df)[0]
+                st.session_state.predicted_value = predicted_value
                 
-                st.session_state.shap_values = st.session_state.explainer.shap_values(
-                    st.session_state.features_df
-                )
+                # Display results
+                st.success(f"**Predicted Growth Rate: `{predicted_value:.4f}`**")
+                
+                # Calculate SHAP values for explanation
+                try:
+                    if st.session_state.explainer is None:
+                        st.session_state.explainer = shap.TreeExplainer(st.session_state.model)
+                    
+                    st.session_state.shap_values = st.session_state.explainer.shap_values(
+                        st.session_state.features_df
+                    )
+                    
+                except Exception as e:
+                    st.warning(f"SHAP explanation unavailable: {e}")
                 
             except Exception as e:
-                st.warning(f"SHAP explanation unavailable: {e}")
-            
-        except Exception as e:
-            st.error(f"Prediction failed: {e}")
+                st.error(f"Prediction failed: {e}")
 
 # Explanation section
 if st.session_state.predicted_value is not None:
