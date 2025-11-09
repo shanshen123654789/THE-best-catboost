@@ -29,30 +29,49 @@ if 'shap_values' not in st.session_state:
     st.session_state.shap_values = None
 if 'explainer' not in st.session_state:
     st.session_state.explainer = None
+if 'model_feature_names' not in st.session_state:
+    st.session_state.model_feature_names = None
 
 # 页面标题
 st.title("Average Daily Gain (ADG) Prediction Model with SHAP Visualization")
 st.markdown("<h3 style='text-align: center;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
 
-# 加载模型
+# 加载模型并获取特征顺序
 @st.cache_resource
 def load_model():
     """缓存模型加载，避免重复加载"""
     try:
         # 尝试使用joblib加载
         model = joblib.load('catboost.pkl')
-        return model, "joblib"
+        
+        # 获取模型的特征名称（训练时的顺序）
+        if hasattr(model, 'feature_names_'):
+            feature_names = model.feature_names_
+        else:
+            # 如果没有特征名称属性，使用默认顺序
+            feature_names = ['30kg ABW', 'Litter size', 'Season', 'Birth weight', 'Parity', 'Sex']
+        
+        return model, "joblib", feature_names
+        
     except Exception as e1:
         try:
             # 如果joblib失败，尝试使用CatBoost原生格式加载
             model = CatBoostRegressor()
             model.load_model('catboost.cbm')
-            return model, "CatBoost native"
+            
+            # 获取特征名称
+            if hasattr(model, 'feature_names_'):
+                feature_names = model.feature_names_
+            else:
+                feature_names = ['30kg ABW', 'Litter size', 'Season', 'Birth weight', 'Parity', 'Sex']
+                
+            return model, "CatBoost native", feature_names
+            
         except Exception as e2:
             st.error(f"❌ 模型加载失败:")
             st.error(f"Joblib错误: {e1}")
             st.error(f"CatBoost错误: {e2}")
-            return None, None
+            return None, None, None
 
 # 侧边栏 - 模型加载
 with st.sidebar:
@@ -60,12 +79,16 @@ with st.sidebar:
     
     if st.button("Load Model", type="primary"):
         with st.spinner('Loading model...'):
-            model, load_method = load_model()
+            model, load_method, feature_names = load_model()
             if model is not None:
                 st.session_state.model = model
                 st.session_state.model_loaded = True
+                st.session_state.model_feature_names = feature_names
                 
-                # 初始化SHAP解释器（但先不计算）
+                # 显示模型特征顺序（用于调试）
+                st.info(f"模型特征顺序: {feature_names}")
+                
+                # 初始化SHAP解释器
                 try:
                     # 临时重定向stdout避免SHAP冗长输出
                     old_stdout = sys.stdout
@@ -86,7 +109,7 @@ if not st.session_state.model_loaded:
     st.info("👈 请在侧边栏点击'Load Model'按钮来初始化应用")
     st.stop()
 
-# 特征范围和描述
+# 特征范围和描述 - 注意：这里使用模型的特征名称顺序
 feature_ranges = {
     "30kg ABW": {"type": "numerical", "min": 45.000, "max": 100.000, "default": 70.000},
     "Litter size": {"type": "numerical", "min": 0, "max": 20, "default": 15},
@@ -100,8 +123,8 @@ feature_ranges = {
         },
         "default": "Spring"
     },
-    "Birth weight (kg)": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},
-    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 2},
+    "Birth weight": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},
+    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 4},
     "Sex": {
         "type": "categorical",
         "options": {
@@ -112,15 +135,18 @@ feature_ranges = {
     },
 }
 
-# 输入特征值
+# 按照模型的特征顺序重新排列特征
+ordered_feature_names = st.session_state.model_feature_names
+
+# 输入特征值 - 按照模型的特征顺序
 st.header("Enter the following feature values:")
-feature_values = []
-feature_names = list(feature_ranges.keys())
+feature_values_dict = {}
 
 col1, col2 = st.columns(2)
 
+# 第一列特征
 with col1:
-    for feature in feature_names[:3]:
+    for i, feature in enumerate(ordered_feature_names[:3]):
         properties = feature_ranges[feature]
         if properties["type"] == "numerical":
             value = st.number_input(
@@ -147,10 +173,11 @@ with col1:
                     index=properties["options"].index(properties["default"]),
                     key=feature
                 )
-        feature_values.append(value)
+        feature_values_dict[feature] = value
 
+# 第二列特征
 with col2:
-    for feature in feature_names[3:]:
+    for i, feature in enumerate(ordered_feature_names[3:], 3):
         properties = feature_ranges[feature]
         if properties["type"] == "numerical":
             value = st.number_input(
@@ -177,10 +204,11 @@ with col2:
                     index=properties["options"].index(properties["default"]),
                     key=feature
                 )
-        feature_values.append(value)
+        feature_values_dict[feature] = value
 
-# 创建特征DataFrame
-features_df = pd.DataFrame([feature_values], columns=feature_names)
+# 创建特征DataFrame - 按照模型的特征顺序
+feature_values_ordered = [feature_values_dict[name] for name in ordered_feature_names]
+features_df = pd.DataFrame([feature_values_ordered], columns=ordered_feature_names)
 
 # 预测按钮
 if st.button("Predict ADG (g/d)", type="primary"):
@@ -208,6 +236,9 @@ if st.button("Predict ADG (g/d)", type="primary"):
             
         except Exception as e:
             st.error(f"Prediction failed: {e}")
+            # 显示调试信息
+            st.error(f"输入特征顺序: {list(features_df.columns)}")
+            st.error(f"模型期望顺序: {ordered_feature_names}")
 
 # SHAP解释部分
 if st.session_state.predicted_value is not None and st.session_state.shap_values is not None:
@@ -223,7 +254,7 @@ if st.session_state.predicted_value is not None and st.session_state.shap_values
             values=st.session_state.shap_values[0],
             base_values=st.session_state.base_value,
             data=features_df.iloc[0],
-            feature_names=feature_names
+            feature_names=ordered_feature_names
         )
         
         # 绘制瀑布图
@@ -251,7 +282,7 @@ if st.session_state.predicted_value is not None and st.session_state.shap_values
         # 特征贡献表格
         st.subheader("Feature Contributions")
         contribution_data = []
-        for i, feature in enumerate(feature_names):
+        for i, feature in enumerate(ordered_feature_names):
             shap_value = st.session_state.shap_values[0][i]
             contribution_data.append({
                 "Feature": feature,
@@ -276,7 +307,7 @@ if st.session_state.predicted_value is not None:
     prediction_details['Predicted_ADG_g_d'] = st.session_state.predicted_value
     
     if st.session_state.shap_values is not None:
-        for i, feature in enumerate(feature_names):
+        for i, feature in enumerate(ordered_feature_names):
             prediction_details[f'SHAP_{feature}'] = st.session_state.shap_values[0][i]
     
     # 转换为CSV
@@ -301,7 +332,7 @@ This is a CatBoost regression model for predicting Average Daily Gain (ADG) base
 - 30kg ABW: Body weight at 30kg
 - Litter size: Number of piglets in the litter  
 - Season: Birth season
-- Birth weight (kg): Individual weight at birth
+- Birth weight: Individual weight at birth (kg)
 - Parity: Which litter (1 for first, 2 for second, etc.)
 - Sex: Gender of the pig
 """)
@@ -309,5 +340,6 @@ This is a CatBoost regression model for predicting Average Daily Gain (ADG) base
 st.sidebar.header("Model Information")
 if st.session_state.model_loaded:
     st.sidebar.write(f"**Model Type:** CatBoost Regressor")
-    st.sidebar.write(f"**Features:** {len(feature_names)}")
+    st.sidebar.write(f"**Features:** {len(ordered_feature_names)}")
+    st.sidebar.write(f"**Feature Order:** {ordered_feature_names}")
     st.sidebar.write(f"**SHAP Ready:** {'Yes' if st.session_state.explainer is not None else 'No'}")
