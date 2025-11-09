@@ -33,37 +33,67 @@ if 'model_feature_names' not in st.session_state:
     st.session_state.model_feature_names = None
 
 # 页面标题（居中显示）
-st.markdown("<h1 style='text-align: center;'>Average Daily Gain (ADG) Prediction Model with SHAP Visualization</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; font-size: 36px;'>Average Daily Gain (ADG) Prediction Model with SHAP Visualization</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center; font-size: 24px;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
 
 # 注入CSS来修改字体和字号
 st.markdown("""
     <style>
+    /* 基础样式 */
     .stTextInput, .stNumberInput, .stSelectbox, .stTextArea, .stRadio, .stSlider {
         font-family: 'Times New Roman', serif;
-        font-size: 18px;
+        font-size: 20px;
     }
     .stButton>button {
         font-family: 'Times New Roman', serif;
-        font-size: 16px;
+        font-size: 20px;
+        padding: 12px 24px;
     }
 
-    /* 增大标签字体大小 */
+    /* 增大所有标签字体大小 */
     .stNumberInput label, .stSelectbox label, .stTextInput label, .stRadio label {
-        font-size: 20px;
-        font-family: 'Times New Roman', serif;
+        font-size: 24px !important;
+        font-family: 'Times New Roman', serif !important;
+        font-weight: bold !important;
     }
     
-    /* 增大特定输入框标签的字体 */
-    .stNumberInput label[for='30kg ABW'], .stNumberInput label[for='Birth weight'], .stSelectbox label[for='Season'] {
-        font-size: 24px;
-        font-weight: bold;
+    /* 特定输入框标签的字体更大 */
+    .stNumberInput label, .stSelectbox label {
+        font-size: 26px !important;
+        font-weight: bold !important;
     }
 
     /* 使输入框整体大小变大 */
     .stNumberInput input, .stTextInput input, .stSelectbox select {
-        font-size: 20px;
-        padding: 10px;
+        font-size: 22px;
+        padding: 12px;
+        height: 50px;
+    }
+    
+    /* 预测结果样式 - 非常大的字体 */
+    .big-result {
+        font-size: 32px !important;
+        font-weight: bold !important;
+        color: #1f77b4 !important;
+        text-align: center !important;
+    }
+    
+    /* 章节标题样式 */
+    .section-header {
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #2e86ab !important;
+        margin-bottom: 20px !important;
+    }
+    
+    /* 成功消息样式 */
+    .stAlert {
+        font-size: 24px !important;
+    }
+    
+    /* 侧边栏样式 */
+    .css-1d391kg {
+        font-size: 18px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -110,9 +140,6 @@ with st.spinner('Loading model...'):
         st.session_state.model_loaded = True
         st.session_state.model_feature_names = feature_names
         
-        # 不再显示模型加载信息
-        # st.info(f"模型特征顺序: {feature_names}")   # 已删除
-        
         # 初始化SHAP解释器
         try:
             st.session_state.explainer = shap.TreeExplainer(model)
@@ -155,12 +182,12 @@ feature_ranges = {
 # 按照模型的特征顺序重新排列特征
 ordered_feature_names = st.session_state.model_feature_names
 
-# 输入特征值 - 每行一个输入框，使用两列的布局，使其更加紧凑
-st.header("Enter the following feature values:")
+# 输入特征值 - 使用自定义CSS类来放大字体
+st.markdown('<div class="section-header">Enter the following feature values:</div>', unsafe_allow_html=True)
 feature_values_dict = {}
 
 # 使用两列布局来展示输入框
-col1, col2 = st.columns([1, 1])  # 等宽布局，列宽比例为 1:1
+col1, col2 = st.columns([1, 1])
 
 # 第一列特征
 with col1:
@@ -228,8 +255,8 @@ with col2:
 feature_values_ordered = [feature_values_dict[name] for name in ordered_feature_names]
 features_df = pd.DataFrame([feature_values_ordered], columns=ordered_feature_names)
 
-# 预测按钮
-if st.button("Predict ADG (g/d)", type="primary"):
+# 预测按钮 - 使用更大的按钮
+if st.button("Predict ADG (g/d)", type="primary", use_container_width=True):
     
     with st.spinner('Making prediction and calculating SHAP values...'):
         try:
@@ -243,8 +270,8 @@ if st.button("Predict ADG (g/d)", type="primary"):
                 st.session_state.shap_values = shap_values
                 st.session_state.base_value = st.session_state.explainer.expected_value
             
-            # 显示预测结果
-            st.success(f"**Predicted ADG: {predicted_value:.2f} g/d**")
+            # 显示预测结果 - 使用大字体
+            st.markdown(f'<div class="big-result">Predicted ADG: {predicted_value:.2f} g/d</div>', unsafe_allow_html=True)
             
         except Exception as e:
             st.error(f"Prediction failed: {e}")
@@ -252,13 +279,13 @@ if st.button("Predict ADG (g/d)", type="primary"):
             st.error(f"输入特征顺序: {list(features_df.columns)}")
             st.error(f"模型期望顺序: {ordered_feature_names}")
 
-# SHAP解释部分 - 修复版本
+# SHAP解释部分
 if st.session_state.predicted_value is not None and st.session_state.shap_values is not None:
-    st.header("Model Explanation with SHAP")
+    st.markdown('<div class="section-header">Model Explanation with SHAP</div>', unsafe_allow_html=True)
     
     try:
         # 创建SHAP瀑布图
-        st.subheader("SHAP Waterfall Plot")
+        st.markdown('<div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">SHAP Waterfall Plot</div>', unsafe_allow_html=True)
         
         # 生成SHAP解释
         explanation = shap.Explanation(
@@ -311,7 +338,7 @@ if st.session_state.predicted_value is not None and st.session_state.shap_values
         st.info("尝试替代的SHAP可视化...")
 
 # 下载预测结果
-st.header("Download Prediction Results")
+st.markdown('<div class="section-header">Download Prediction Results</div>', unsafe_allow_html=True)
 
 if st.session_state.predicted_value is not None:
     # 创建包含预测详细信息的CSV
@@ -334,3 +361,37 @@ if st.session_state.predicted_value is not None:
     )
 else:
     st.info("Please click 'Predict ADG (g/d)' button first to get predictions, then you can download the results.")
+
+# 侧边栏信息
+st.sidebar.header("About this Model")
+st.sidebar.info("""
+This is a CatBoost regression model for predicting Average Daily Gain (ADG) in pigs based on various biological features.
+
+**Feature Descriptions:**
+- **30kg ABW**: Age at 30kg body weight
+- **Litter size**: Number of piglets in the litter
+- **Season**: Birth season of the pig
+- **Birth weight**: Individual weight at birth
+- **Parity**: Which litter (1 for first, 2 for second, etc.)
+- **Sex**: Gender of the pig
+""")
+
+st.sidebar.header("Model Information")
+st.sidebar.text("""
+Algorithm: CatBoost Regressor
+Task: Regression
+Target: Average Daily Gain (ADG)
+""")
+
+# 模型状态在侧边栏
+st.sidebar.header("Application Status")
+if st.session_state.model_loaded:
+    st.sidebar.success("✅ Model loaded and ready")
+    st.sidebar.text(f"Features: {len(st.session_state.model_feature_names)}")
+else:
+    st.sidebar.error("❌ Model not loaded")
+
+# 底部信息
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown("<p style='text-align: center; color: gray; font-size: 18px;'>Northwest A&F University • College of Animal Science and Technology</p>", unsafe_allow_html=True)
