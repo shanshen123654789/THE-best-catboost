@@ -36,6 +36,20 @@ if 'model_feature_names' not in st.session_state:
 st.markdown("<h1 style='text-align: center;'>Average Daily Gain (ADG) Prediction Model with SHAP Visualization</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
 
+# 注入CSS来修改字体和字号
+st.markdown("""
+    <style>
+    .stTextInput, .stNumberInput, .stSelectbox, .stTextArea, .stRadio, .stSlider {
+        font-family: 'Times New Roman', serif;
+        font-size: 18px;
+    }
+    .stButton>button {
+        font-family: 'Times New Roman', serif;
+        font-size: 16px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 加载模型并获取特征顺序
 @st.cache_resource
 def load_model():
