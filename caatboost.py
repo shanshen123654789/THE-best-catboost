@@ -5,6 +5,7 @@ import pandas as pd
 import shap
 import matplotlib.pyplot as plt
 from catboost import CatBoostRegressor
+import io
 
 # 设置matplotlib中文字体和格式
 plt.rcParams['font.family'] = 'Times New Roman'
@@ -15,7 +16,7 @@ try:
     # 尝试使用joblib加载
     model = joblib.load('catboost.pkl')
     st.success("✅ 模型加载成功 (joblib格式)")
-except:
+except Exception as e:
     try:
         # 如果joblib失败，尝试使用CatBoost原生格式加载
         model = CatBoostRegressor()
@@ -28,7 +29,7 @@ except:
 # 特征范围和描述 - 根据你的数据调整
 feature_ranges = {
     "30kg ABW": {"type": "numerical", "min": 45.000, "max": 100.000, "default": 70.000},
-    "Litter size": {"type": "numerical", "min": 0, "max": 35, "default": 15},
+    "Litter size": {"type": "numerical", "min": 0, "max": 20, "default": 15},
     "Season": {
         "type": "categorical",
         "options": {
@@ -37,9 +38,9 @@ feature_ranges = {
             "Autumn": 3,
             "Winter": 4
         },
-        "default": "Summer"
+        "default": "Spring"  # 默认值更改为Spring
     },
-    "Birth weight": {"type": "numerical", "min": 0.0, "max": 4.0, "default": 2.0},
+    "Birth weight (kg)": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},  # 默认值更改为1.5 kg
     "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 2},
     "Sex": {
         "type": "categorical",
@@ -47,12 +48,12 @@ feature_ranges = {
             "Female": 0,
             "Male": 1
         },
-        "default": "Female"
+        "default": "Male"  # 默认值更改为Male
     },
 }
 
 # 页面标题
-st.title("Growth Rate Prediction Model with SHAP Visualization")
+st.title("Average Daily Gain (ADG) Prediction Model with SHAP Visualization")
 st.markdown("<h3 style='text-align: center;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
 
 # 输入特征值
@@ -99,14 +100,14 @@ if 'predicted_value' not in st.session_state:
     st.session_state.predicted_value = None
 
 # 预测按钮
-if st.button("Predict Growth Rate"):
+if st.button("Predict ADG (g/d)"):
     
     # 回归预测
     predicted_value = model.predict(features_df)[0]
     st.session_state.predicted_value = predicted_value
     
     # 显示预测结果
-    st.success(f"**Predicted Growth Rate: {predicted_value:.4f}**")
+    st.success(f"**Predicted ADG (g/d): {predicted_value:.4f}**")
     
     # 创建解释器并计算SHAP值
     st.header("Model Explanation with SHAP")
@@ -136,7 +137,20 @@ if st.button("Predict Growth Rate"):
         plt.tight_layout()
         st.pyplot(fig2)
         plt.close()
+
+        # 添加下载SHAP解释图的功能（JPG格式，DPI=600）
+        st.subheader("Download SHAP Explanation Plot")
+        img_stream = io.BytesIO()
+        fig2.savefig(img_stream, format='jpg', dpi=600)  # 保存为JPG，DPI=600
+        img_stream.seek(0)
         
+        st.download_button(
+            label="Download SHAP Plot (JPG)",
+            data=img_stream,
+            file_name="shap_explanation.jpg",
+            mime="image/jpeg"
+        )
+
         # 显示特征贡献表格
         st.subheader("Feature Contributions")
         contribution_data = []
@@ -162,7 +176,7 @@ if st.session_state.predicted_value is not None:
     if st.button("Download Prediction Details"):
         # 创建包含预测详细信息的CSV
         prediction_details = features_df.copy()
-        prediction_details['Predicted_Growth_Rate'] = st.session_state.predicted_value
+        prediction_details['Predicted_ADG_g_d'] = st.session_state.predicted_value
         
         # 转换为CSV
         csv = prediction_details.to_csv(index=False)
@@ -171,30 +185,24 @@ if st.session_state.predicted_value is not None:
         st.download_button(
             label="Download CSV",
             data=csv,
-            file_name="growth_rate_prediction.csv",
+            file_name="ADG_prediction.csv",
             mime="text/csv"
         )
 else:
-    st.info("请先点击 'Predict Growth Rate' 按钮进行预测，然后才能下载结果。")
+    st.info("请先点击 'Predict ADG (g/d)' 按钮进行预测，然后才能下载结果。")
 
 # 侧边栏信息
 st.sidebar.header("About this Model")
 st.sidebar.info("""
-This is a CatBoost regression model for predicting growth rate based on various pig features.
+This is a CatBoost regression model for predicting Average Daily Gain (ADG) based on various pig features.
 
 **Features:**
 - 30kg ABW: age at 30 kg body weight 
 - Litter size: Number of offspring
 - Season: The birth season of the pig
-- Birth weight: The pig's individual weight (in kg) recorded at the time of birth.
+- Birth weight (kg): The pig's individual weight (in kg) recorded at the time of birth.
 - Parity
 - Sex
 """)
 
-st.sidebar.header("Model Performance")
-st.sidebar.text("""
-Based on test set:
-- RMSE: Varies by model
-- R²: Varies by model
-- MAE: Varies by model
-""")
+
