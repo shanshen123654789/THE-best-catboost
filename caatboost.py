@@ -32,8 +32,8 @@ if 'explainer' not in st.session_state:
 if 'model_feature_names' not in st.session_state:
     st.session_state.model_feature_names = None
 
-# 页面标题
-st.title("Average Daily Gain (ADG) Prediction Model with SHAP Visualization")
+# 页面标题（居中显示）
+st.markdown("<h1 style='text-align: center;'>Average Daily Gain (ADG) Prediction Model with SHAP Visualization</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center;'>Northwest A&F University, Wu.Lab. China</h3>", unsafe_allow_html=True)
 
 # 加载模型并获取特征顺序
@@ -78,14 +78,12 @@ with st.spinner('Loading model...'):
         st.session_state.model_loaded = True
         st.session_state.model_feature_names = feature_names
         
-        # 显示模型特征顺序（用于调试）
-        st.info(f"模型特征顺序: {feature_names}")
+        # 不再显示模型加载信息
+        # st.info(f"模型特征顺序: {feature_names}")   # 已删除
         
         # 初始化SHAP解释器
         try:
             st.session_state.explainer = shap.TreeExplainer(model)
-            st.success(f"✅ 模型加载成功 ({load_method}格式)")
-            st.success("✅ SHAP解释器初始化成功")
         except Exception as e:
             st.warning(f"模型加载成功，但SHAP解释器初始化失败: {e}")
     else:
@@ -111,7 +109,7 @@ feature_ranges = {
         "default": "Spring"
     },
     "Birth weight": {"type": "numerical", "min": 0.0, "max": 2.5, "default": 1.5},
-    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 4},
+    "Parity": {"type": "categorical", "options": [1, 2, 3, 4, 5, 6, 7], "default": 2},
     "Sex": {
         "type": "categorical",
         "options": {
@@ -248,17 +246,30 @@ if st.session_state.predicted_value is not None and st.session_state.shap_values
         # 显示图形
         st.pyplot(fig)
         
-        # 保存图形到内存用于下载
+        # 保存图形到内存用于下载（JPG格式，DPI=600）
         img_buffer = io.BytesIO()
         fig.savefig(img_buffer, format='jpg', dpi=600, bbox_inches='tight', facecolor='white')
         img_buffer.seek(0)
         
-        # 提供下载按钮
+        # 提供下载JPG按钮
         st.download_button(
             label="Download SHAP Plot (JPG, 600 DPI)",
             data=img_buffer,
             file_name="shap_explanation.jpg",
             mime="image/jpeg"
+        )
+        
+        # 保存图形到内存用于下载（PDF格式，DPI=1200）
+        pdf_buffer = io.BytesIO()
+        fig.savefig(pdf_buffer, format='pdf', dpi=1200, bbox_inches='tight', facecolor='white')
+        pdf_buffer.seek(0)
+        
+        # 提供下载PDF按钮
+        st.download_button(
+            label="Download SHAP Plot (PDF, 1200 DPI)",
+            data=pdf_buffer,
+            file_name="shap_explanation.pdf",
+            mime="application/pdf"
         )
         
         plt.close(fig)  # 在保存后关闭图形
