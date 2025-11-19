@@ -372,8 +372,8 @@ This is a CatBoost regression model for predicting Average Daily Gain (ADG) in p
 - **Litter size**: Number of piglets in the litter
 - **Season**: Birth season of the pig
 - **Birth weight**: Individual weight at birth
-- **Parity**: Which litter (1 for first, 2 for second, etc.)
-- **Sex**: Gender of the pig
+- **Parity**: The number of the litter in which the pig was born (e.g., 1 for the first litter, 2 for the second, etc.).)
+- **Sex**
 """)
 
 st.sidebar.header("Model Information")
